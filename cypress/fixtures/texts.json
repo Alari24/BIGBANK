@@ -1,0 +1,18 @@
+{
+  "ET": {
+    "modalHeader": "Vali sobiv summa ja periood",
+    "loanAmount": "Laenusumma",
+    "period": "Periood",
+    "months": "kuud",
+    "monthlyPayment": "Kuumakse",
+    "continue": "JÄTKA"
+  },
+  "RU": {
+    "modalHeader": "Выберите подходящую сумму и период",
+    "loanAmount": "Сумма кредита",
+    "period": "Срок кредитования",
+    "months": "месяцев",
+    "monthlyPayment": "Ежемесячный платеж",
+    "continue": "ПРОДОЛЖИТЬ"
+  }
+}

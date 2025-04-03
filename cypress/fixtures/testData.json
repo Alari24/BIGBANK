@@ -1,0 +1,20 @@
+{
+  "defaultAmount": "5000",
+  "amountMax": "30000",
+  "amountMin": "500",
+  "defaultPeriod": "60",
+  "periodMin": "6",
+  "periodMax": "120",
+  "defaultMonthlyPayment": "€124.41",
+  "forTesting": {
+    "desiredAmount": "12345",
+    "expectedMonthlyPaymentForAmount": "€301.31",
+    "tooLittleAmount": "459",
+    "tooMuchAmount": "30152",
+    "desiredMonths": "90",
+    "expectedMonthlyPaymentForMonths": "€98.26",
+    "tooLittleMonths": "5",
+    "tooManyMonths": "121",
+    "lettersToBeInserted": "asdasdasd"
+  }
+}

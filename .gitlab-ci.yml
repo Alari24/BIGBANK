@@ -1,0 +1,140 @@
+include:
+  - project: 'infrastructure/gitlab/ci-templates/app/build-java-app'
+    ref: 'release/7.0.0'
+    file: 'BuildJavaApplication.gitlab-ci.yml'
+  - project: 'infrastructure/gitlab/ci-templates/app/deploy-jar'
+    ref: 'release/4.2.5'
+    file: 'DeployJar.gitlab-ci.yml'
+  - project: 'infrastructure/gitlab/ci-templates/app/common'
+    ref: 'release/10.1.0'
+    file: 'build/npm.yml'
+
+variables:
+  BUILD_REPO: "loan-gradle-dev-local"
+  RELEASE_REPO: "loan-gradle-release-local"
+  VERSION_PREFIX: "LOAN"
+  CYPRESS_CACHE_FOLDER: "/builds/${CI_PROJECT_PATH}/frontend/.npm/cypress-cache"
+
+stages:
+  - build
+  - test
+  - review
+  - prelive
+  - production
+
+############################################################
+jar:
+  needs: ["npm:build"]
+  image: docker.artifact
+  extends: .build_jar
+
+############################################################
+code_quality:
+  image: docker.artifact
+
+############################################################
+npm:build:
+  extends: .npm_build
+  image: docker.artifact
+  stage: build
+  rules:
+    - if: $APP_VERSION
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+############################################################
+
+.acceptance:
+  image: docker.artifact
+  before_script:
+    - echo "artifactory_user=$(cat $ARTIFACTORY_USER_BUILD)" >> properties
+    - echo "artifactory_password=$(cat $ARTIFACTORY_KEY_BUILD)" >> properties
+    - jf config add build-server --interactive=false --url=$ARTIFACTORY_URL --user=$(cat $ARTIFACTORY_USER_BUILD) --access-token=$(cat $ARTIFACTORY_KEY_BUILD)
+    - jf config use build-server
+    - jf gradle-config --use-wrapper=true
+  artifacts:
+    reports:
+      junit: "acceptance/build/test-results/**/TEST-*.xml"
+    paths:
+      - "acceptance/build"
+    expire_in: 2 weeks
+    when: always
+
+############################################################
+
+deploy:test:
+  extends: .deploy_to_test
+  needs: ["jar"]
+  allow_failure: false
+
+deploy:prelive:
+  extends: .deploy_to_prelive
+  needs: [ "jar" ]
+  allow_failure: false
+
+############################################################
+
+acceptance:test:
+  extends: .acceptance
+  stage: review
+  needs: ["deploy:test"]
+  script:
+    - jf gradle-config --use-wrapper=true --uses-plugin=true
+  rules:
+    - if: '$APP_VERSION'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+acceptance:prelive:
+  extends: .acceptance
+  stage: prelive
+  needs: ["deploy:prelive"]
+  script:
+    - jf gradle-config --use-wrapper=true --uses-plugin=true
+  rules:
+    - if: '$APP_VERSION'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+
+############################################################
+
+e2e:test:
+  extends: .npm_command
+  image: docker.artifact
+  needs:
+    - "deploy:test"
+  stage: 'review'
+  cache:
+    - !reference [.npm_cache_update, cache]
+  script:
+    - npx cypress run --browser firefox --config-file ./cypress.config.js
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    paths:
+      - "**/cypress/screenshots/*"
+      - "**/cypress/videos/*"
+    expire_in: 2 weeks
+    when: on_failure
+  allow_failure: true
+  rules:
+    - if: $APP_VERSION
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_REF_PROTECTED == "true" || ($CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "merge_request_event")'
+      when: manual
+
+############################################################
+
+deploy:prod:
+  extends: .deploy_to_prod
