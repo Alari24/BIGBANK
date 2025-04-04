@@ -62,4 +62,5 @@ are given in the file itself on what they do.
 
 Additionally I have included a gitlab pipeline file interpretation on how a gitlab pipeline could look like using imaginary paths for extra credit.
 
-No odd behaviours were found in the modal
+Regarding behaviours that seem odd then maybe that when pressing enter then it closes the modal window. I am used to pressing enter on my keyboard when putting in a input value. Currently when filling the modal and filling in the loan amount
+value and then pressing enter then the form is not fully to my liking when it closed because maybe perhaps I wanted to change the duration as well.
